@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseDataService } from '../../core/supabase/supabase-data.service';
 
 @Component({
@@ -61,12 +61,17 @@ import { SupabaseDataService } from '../../core/supabase/supabase-data.service';
   styles: [
     `
       .auth-wrap {
-        max-width: 440px;
+        max-width: 456px;
         width: calc(100% - 32px);
         margin: clamp(24px, 8vh, 72px) auto;
       }
+      .auth-card {
+        border-color: #e3e3dd;
+        box-shadow: 0 18px 50px rgb(28 28 24 / 0.07);
+      }
       .auth-card h1 {
         margin-bottom: var(--space-2);
+        font-size: clamp(2rem, 5vw, 2.7rem);
       }
       .auth-card form {
         margin-top: var(--space-6);
@@ -103,6 +108,7 @@ import { SupabaseDataService } from '../../core/supabase/supabase-data.service';
 export class AuthComponent {
   private readonly data = inject(SupabaseDataService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   email = '';
   password = '';
   signUp = signal(false);
@@ -122,7 +128,10 @@ export class AuthComponent {
         );
       } else {
         await this.data.signIn(this.email, this.password);
-        await this.router.navigateByUrl('/');
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        await this.router.navigateByUrl(
+           returnUrl?.startsWith('/') && !returnUrl.startsWith('//') ? returnUrl : '/forms'
+        );
       }
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : 'Authentication failed.');

@@ -1,5 +1,6 @@
-import { Component, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, inject, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { SupabaseDataService } from '../../../core/supabase/supabase-data.service';
 
 @Component({
   selector: 'app-header',
@@ -8,7 +9,7 @@ import { RouterLink } from '@angular/router';
   template: `
     <header class="app-header" role="banner">
       <div class="header-content">
-        <a routerLink="/" class="logo" aria-label="Intent home">
+         <a [routerLink]="data.user() ? '/forms' : '/'" class="logo" aria-label="Intent home">
           <span>intent</span><i aria-hidden="true"></i>
         </a>
         <nav
@@ -25,9 +26,14 @@ import { RouterLink } from '@angular/router';
           >
           <a href="#footer" class="nav-link" (click)="menuOpen.set(false)">Pricing</a>
         </nav>
-        <div class="header-actions">
-          <a routerLink="/auth" class="sign-in">Sign in</a
-          ><a routerLink="/forms/new" class="header-cta"
+         <div class="header-actions">
+           @if (data.authReady() && !data.user()) {
+             <a routerLink="/auth" class="sign-in">Sign in</a>
+           } @else if (data.authReady()) {
+              <a routerLink="/forms" class="sign-in">My forms</a>
+             <button type="button" class="sign-in sign-out" (click)="signOut()">Sign out</button>
+           }
+           <a routerLink="/forms/new" class="header-cta"
             ><span class="desktop-cta-label">Start building free</span
             ><span class="mobile-cta-label">Build free</span> <span>↗</span></a
           >
@@ -42,7 +48,11 @@ import { RouterLink } from '@angular/router';
         >
           <span></span><span></span>
         </button>
-        <a routerLink="/auth" class="avatar" aria-label="Open account"><span>⌁</span></a>
+         @if (data.authReady() && data.user()) {
+           <button type="button" class="avatar" aria-label="Sign out" (click)="signOut()"><span>⌁</span></button>
+         } @else if (data.authReady()) {
+           <a routerLink="/auth" class="avatar" aria-label="Open account"><span>⌁</span></a>
+         }
       </div>
     </header>
   `,
@@ -120,6 +130,12 @@ import { RouterLink } from '@angular/router';
         color: #171717;
         text-decoration: none;
       }
+      .sign-out {
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        padding: 0;
+      }
       .header-cta {
         display: inline-flex;
         gap: 12px;
@@ -155,6 +171,8 @@ import { RouterLink } from '@angular/router';
         color: #fff;
         text-decoration: none;
         font-size: 18px;
+        border: 0;
+        cursor: pointer;
       }
       .avatar:hover {
         color: #fff;
@@ -243,5 +261,13 @@ import { RouterLink } from '@angular/router';
   ],
 })
 export class HeaderComponent {
+  readonly data = inject(SupabaseDataService);
+  private readonly router = inject(Router);
   menuOpen = signal(false);
+
+  async signOut(): Promise<void> {
+    await this.data.signOut();
+    this.menuOpen.set(false);
+     await this.router.navigateByUrl('/');
+  }
 }

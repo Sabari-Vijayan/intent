@@ -11,7 +11,7 @@ Last updated: 2026-10-23
 - [x] Form publishing works after applying the version-update RLS policy.
 - [x] Public published-form submission works.
 - [x] Creator response review and CSV export work.
-- [ ] AI generation and AI editing are not implemented.
+- [ ] AI editing is not implemented.
 - [ ] Sarvam translation integration is not implemented.
 - [ ] Final UI polish and complete accessibility pass remain.
 
@@ -78,8 +78,8 @@ Files:
 - [x] Create and save draft forms.
 - [x] Load an existing form version.
 - [x] Publish immutable form versions.
-- [ ] Sign-out UI.
-- [ ] Auth route guard and creator-route protection.
+- [x] Sign-out UI.
+- [x] Auth route guard and creator-route protection.
 - [ ] Server-side transactional draft/publish operations.
 - [ ] Formal cross-workspace/RLS integration tests.
 
@@ -117,14 +117,14 @@ Files:
 
 ### Milestone 5 — Sarvam adapter and `generate_form`
 
-- [ ] Verify current Sarvam API endpoint, model, locales, and limits.
-- [ ] Create secure Supabase Edge Function adapter.
-- [ ] Store Sarvam credentials as Supabase secrets.
-- [ ] Add `generate_form` endpoint.
-- [ ] Parse and validate provider output.
+- [x] Verify current Sarvam API endpoint, model, locales, and limits.
+- [x] Create secure Supabase Edge Function adapter.
+- [x] Store Sarvam credentials as Supabase secrets.
+- [x] Add `generate_form` endpoint.
+- [x] Parse and validate provider output.
 - [ ] Add quota, timeout, retry, and error handling.
-- [ ] Add reviewable generated-form proposal.
-- [ ] Ensure AI output cannot publish without creator acceptance.
+- [x] Add reviewable generated-form proposal.
+- [x] Ensure AI output cannot publish without creator acceptance.
 - [ ] Add provider/model/template metadata logging without response content.
 
 ### Milestone 6 — AI edits and translations
@@ -181,8 +181,8 @@ Current result:
 
 ## Next session — UI focus
 
-- [ ] Improve creator navigation and authenticated header state.
-- [ ] Add sign-out control.
+- [x] Improve creator navigation and authenticated header state.
+- [x] Add sign-out control.
 - [ ] Add clearer draft/published status and version information.
 - [ ] Improve form editor layout and empty states.
 - [ ] Add field option editing for choice fields.

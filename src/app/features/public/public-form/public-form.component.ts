@@ -12,9 +12,14 @@ import { FormSchema } from '../../../types/schema';
   imports: [CommonModule, FormsModule, SchemaFormRendererComponent],
   template: `
     <div class="container public-form-shell">
+      <div class="public-brand" aria-label="Intent form">
+        <span>intent</span><i aria-hidden="true"></i><small>a thoughtful question</small>
+      </div>
       @if (loading()) {
-        <div class="card">
-          <div class="card-body"><p role="status">Loading form…</p></div>
+        <div class="public-loading" role="status">
+          <span class="public-loading-mark" aria-hidden="true">✦</span>
+          <strong>Preparing your form</strong>
+          <span>Just a moment…</span>
         </div>
       }
       @if (error()) {
@@ -47,6 +52,7 @@ import { FormSchema } from '../../../types/schema';
       @if (success()) {
         <div class="card">
           <div class="card-body success">
+            <div class="success-mark" aria-hidden="true">✓</div>
             <h1>Thank you</h1>
             <p>Your response has been submitted successfully.</p>
           </div>
@@ -56,17 +62,81 @@ import { FormSchema } from '../../../types/schema';
   `,
   styles: [
     `
-      .locale-row {
-        max-width: 220px;
-        margin-bottom: var(--space-6);
-      }
       .public-form-shell {
-        max-width: 720px;
+        max-width: 680px;
+        padding-bottom: var(--space-8);
+      }
+      .public-form-shell > .card {
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+      .public-form-shell > .card .card-body { padding: 0; }
+      .public-loading {
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+        padding: 62px 20px;
+        border: 1px solid #e4e4db;
+        border-radius: 3px;
+        background: #fffefa;
+        color: var(--color-text-muted);
+        box-shadow: 0 13px 26px rgb(35 35 28 / 0.05);
+        animation: public-loading-arrive .35s ease-out both;
+      }
+      .public-loading strong { color: var(--color-text); font: 400 1.65rem var(--font-display); letter-spacing: -.04em; }
+      .public-loading-mark { color: var(--color-success); font-size: 1.2rem; animation: public-loading-float 1.2s ease-in-out infinite; }
+      .locale-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      .locale-row .label { margin: 0; color: var(--color-text-muted); font-size: .72rem; font-weight: 500; }
+      .locale-row .input { width: auto; min-width: 150px; padding-block: 7px; border-radius: 999px; background: #fffefa; }
+      .public-brand {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin: 0 0 28px 2px;
+        color: #242424;
+        font: 500 1.35rem/1 var(--font-display);
+        letter-spacing: -0.06em;
+      }
+      .public-brand i {
+        width: 4px;
+        height: 4px;
+        margin-top: 9px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .public-brand small {
+        margin-left: 8px;
+        color: var(--color-text-muted);
+        font: 0.68rem var(--font-sans);
+        letter-spacing: 0;
       }
       .success {
         text-align: center;
         padding: var(--space-10);
       }
+      .success-mark {
+        display: grid;
+        place-items: center;
+        width: 52px;
+        height: 52px;
+        margin: 0 auto 18px;
+        border-radius: 50%;
+        background: #e8f0e8;
+        color: #597a60;
+        font: 1.8rem var(--font-display);
+        animation: success-pop .45s cubic-bezier(.2,.8,.2,1) both;
+      }
+      @keyframes success-pop { from { opacity: 0; transform: scale(.7) rotate(-8deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+      @keyframes public-loading-arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes public-loading-float { 0%, 100% { transform: translateY(1px) rotate(-8deg); } 50% { transform: translateY(-3px) rotate(8deg); } }
+      @media (prefers-reduced-motion: reduce) { .success-mark, .public-loading, .public-loading-mark { animation: none; } }
       .success h1 {
         margin-bottom: var(--space-3);
       }
@@ -74,11 +144,7 @@ import { FormSchema } from '../../../types/schema';
         .public-form-shell {
           padding-inline: 10px;
         }
-        .public-form-shell > .card .card-body {
-          padding: 20px 16px;
-        }
         .locale-row {
-          max-width: none;
           margin-bottom: var(--space-5);
         }
         .success {
@@ -106,9 +172,9 @@ export class PublicFormComponent {
 
   private async load(): Promise<void> {
     try {
-      const slug = this.route.snapshot.paramMap.get('slug');
-      if (!slug) throw new Error('Form link is incomplete.');
-      const result = await this.data.publishedFormBySlug(slug);
+      const formId = this.route.snapshot.paramMap.get('formId');
+      if (!formId) throw new Error('Form link is incomplete.');
+      const result = await this.data.publishedFormById(formId);
       this.formId = result.form.id;
       this.versionId = result.version.id;
       this.schema.set(result.version.schema_json);

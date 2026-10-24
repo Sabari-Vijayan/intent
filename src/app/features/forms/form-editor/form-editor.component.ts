@@ -28,18 +28,79 @@ const FIELD_TYPES: FieldType[] = [
     <div class="container editor-page">
       <div class="page-header">
         <div>
-          <a routerLink="/" class="back-link">← Forms</a>
+           <a routerLink="/forms" class="back-link">← My forms</a>
           <h1>Edit form</h1>
         </div>
-        <div class="actions">
-          <button class="btn btn-secondary" type="button" (click)="preview.set(!preview())">
+         <div class="actions">
+           @if (formId && published()) {
+             <a class="live-link" [href]="publicUrl()" target="_blank" rel="noopener">Open live form ↗</a>
+             <button class="btn btn-secondary" type="button" (click)="copyPublicLink()">
+               {{ copied() ? 'Link copied' : 'Copy link' }}
+             </button>
+           }
+           <button class="btn btn-secondary" type="button" (click)="preview.set(!preview())">
             {{ preview() ? 'Edit form' : 'Preview' }}</button
-          ><button class="btn btn-secondary" type="button" (click)="saveDraft()">Save draft</button
-          ><button class="btn btn-primary" type="button" (click)="publish()">Publish</button>
+           ><button class="btn btn-secondary" type="button" (click)="saveDraft()" [disabled]="loading()">Save draft</button
+           ><button class="btn btn-primary" type="button" (click)="publish()" [disabled]="loading()">Publish</button>
         </div>
       </div>
 
-      @if (notice()) {
+      @if (!formId) {
+        <section class="card ai-generator" aria-labelledby="ai-generator-heading">
+          <div class="card-body">
+            <div>
+              <span class="eyebrow">AI draft</span>
+              <h2 id="ai-generator-heading">Start with a sentence</h2>
+              <p class="help-text">Describe the form you need. Intent will prepare a draft for your review.</p>
+            </div>
+            <label class="label" for="generation-prompt">What should this form collect?</label>
+            <textarea
+              id="generation-prompt"
+              class="input"
+              rows="3"
+              [(ngModel)]="generationPrompt"
+              placeholder="A customer satisfaction survey for our new product"
+            ></textarea>
+            <div class="ai-actions">
+              <button class="btn btn-primary" type="button" (click)="generateForm()" [disabled]="generating()">
+                 @if (generating()) { <span class="button-spark" aria-hidden="true">✦</span> }
+                 {{ generating() ? 'Shaping your form…' : 'Draft with AI' }}
+              </button>
+              <span class="help-text">The draft is never saved or published until you accept it.</span>
+            </div>
+          </div>
+        </section>
+      }
+
+      @if (proposal()) {
+        <section class="card proposal-card" aria-labelledby="proposal-heading">
+          <div class="card-header">
+            <div>
+              <span class="eyebrow">Review required</span>
+              <h2 id="proposal-heading">AI draft proposal</h2>
+            </div>
+            <button class="btn btn-secondary" type="button" (click)="proposal.set(null)">Discard</button>
+          </div>
+          <div class="card-body">
+            <p>{{ proposal()?.explanation }}</p>
+            @if (proposal()?.validation_findings?.length) {
+              <ul class="findings" aria-label="AI validation findings">
+                @for (finding of proposal()?.validation_findings; track finding) { <li>{{ finding }}</li> }
+              </ul>
+            }
+            <div class="proposal-preview"><app-schema-form-renderer [schema]="proposal()!.schema" [showSubmit]="false" /></div>
+            <button class="btn btn-primary" type="button" (click)="acceptProposal()">Use this draft</button>
+          </div>
+        </section>
+      }
+
+       @if (savingAction()) {
+         <div class="save-state" role="status">
+           <span class="save-orbit" aria-hidden="true"><i></i><i></i><i></i></span>
+           {{ savingAction() === 'publishing' ? 'Putting your form on the shelf…' : 'Saving your changes…' }}
+         </div>
+       }
+       @if (notice()) {
         <div class="notice" role="status">{{ notice() }}</div>
       }
       @if (preview()) {
@@ -177,6 +238,26 @@ const FIELD_TYPES: FieldType[] = [
       .page-header {
         align-items: flex-end;
       }
+      .editor-page { max-width: 1120px; }
+      .editor-page > .page-header { margin-bottom: 32px; }
+      .editor-grid { align-items: start; }
+      .editor-grid > section {
+        border-top: 3px solid #252522;
+        border-radius: 3px 3px 18px 18px;
+      }
+      .editor-grid > section .card-header {
+        background: #f1f3ed;
+        border-bottom-color: #dfe2d9;
+      }
+      .editor-grid > section .card-header h2,
+      .mini-preview .card-header h2 { font-size: 1.55rem; }
+      .mini-preview {
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+      .mini-preview .card-header { padding-inline: 0; border-bottom: 1px solid #dfe2d9; }
+      .mini-preview .card-body { padding: 24px 0 0; }
       .back-link {
         display: block;
         margin-bottom: var(--space-2);
@@ -197,12 +278,51 @@ const FIELD_TYPES: FieldType[] = [
       .actions .btn {
         min-height: 40px;
       }
+      .live-link {
+        align-self: center;
+        color: var(--color-text-secondary);
+        font-size: var(--text-sm);
+        white-space: nowrap;
+      }
+      .live-link:hover { color: var(--color-primary-text); text-decoration: none; }
       .notice {
         background: var(--color-success-subtle);
         color: var(--color-success);
         padding: var(--space-3) var(--space-4);
         border-radius: var(--radius-md);
         margin-bottom: var(--space-4);
+      }
+      .ai-generator,
+      .proposal-card {
+        margin-bottom: var(--space-6);
+      }
+      .ai-generator {
+        background: #eef3ed;
+        border-color: #dfe9de;
+        box-shadow: none;
+      }
+      .ai-generator h2,
+      .proposal-card h2 {
+        margin: var(--space-1) 0 var(--space-2);
+      }
+      .ai-generator .help-text {
+        margin-bottom: var(--space-4);
+      }
+      .ai-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        margin-top: var(--space-3);
+      }
+      .proposal-preview {
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        margin: var(--space-4) 0;
+        padding: var(--space-4);
+      }
+      .findings {
+        color: var(--color-text-secondary);
+        padding-left: var(--space-5);
       }
       .editor-grid {
         display: grid;
@@ -223,10 +343,11 @@ const FIELD_TYPES: FieldType[] = [
         font-weight: var(--font-semibold);
       }
       .field-editor {
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        padding: var(--space-3);
+        border: 1px solid #e6e6e0;
+        border-radius: 14px;
+        padding: 18px;
         margin-bottom: var(--space-3);
+        background: #fcfcfa;
       }
       .field-toolbar {
         justify-content: space-between;
@@ -253,6 +374,10 @@ const FIELD_TYPES: FieldType[] = [
         text-transform: uppercase;
         letter-spacing: 0.05em;
         margin-bottom: var(--space-4);
+      }
+      .mini-preview {
+        position: sticky;
+        top: 104px;
       }
       @media (max-width: 900px) {
         .editor-grid {
@@ -323,6 +448,12 @@ export class FormEditorComponent {
   private nextId = 1;
   formId: string | null = null;
   loading = signal(false);
+  generating = signal(false);
+  savingAction = signal<'saving' | 'publishing' | null>(null);
+  proposal = signal<import('../../../types/schema').AIGenerateFormResult | null>(null);
+  generationPrompt = '';
+  published = signal(false);
+  copied = signal(false);
 
   constructor() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -336,16 +467,47 @@ export class FormEditorComponent {
     this.loading.set(true);
     try {
       const result = await this.data.formWithCurrentVersion(id);
+      this.published.set(result.form.status === 'published');
       if (result.version) this.schema.set(structuredClone(result.version.schema_json));
     } catch (error) {
       this.notice.set(error instanceof Error ? error.message : 'Could not load this form.');
     } finally {
       this.loading.set(false);
+      this.savingAction.set(null);
     }
   }
 
   updateSchema(): void {
     this.schema.set({ ...this.schema() });
+  }
+
+  async generateForm(): Promise<void> {
+    if (this.generationPrompt.trim().length < 10) {
+      this.notice.set('Describe the form in at least 10 characters.');
+      return;
+    }
+    this.generating.set(true);
+    this.notice.set('');
+    try {
+      this.proposal.set(await this.data.generateForm(this.generationPrompt));
+    } catch (error) {
+      this.notice.set(error instanceof Error ? error.message : 'Could not generate a form draft.');
+    } finally {
+      this.generating.set(false);
+    }
+  }
+
+  acceptProposal(): void {
+    const proposal = this.proposal();
+    if (!proposal) return;
+    const validation = validateFormSchema(proposal.schema);
+    if (!validation.valid) {
+      this.notice.set(`Cannot accept proposal: ${validation.errors[0].path} ${validation.errors[0].message}`);
+      return;
+    }
+    this.schema.set(structuredClone(proposal.schema));
+    this.proposal.set(null);
+    this.notice.set('AI draft accepted for editing. Review it before saving.');
   }
 
   addSection(): void {
@@ -409,6 +571,38 @@ export class FormEditorComponent {
     await this.persist(true);
   }
 
+  publicUrl(): string {
+    return this.formId ? `${globalThis.location?.origin ?? ''}/public/${this.formId}` : '';
+  }
+
+  async copyPublicLink(): Promise<void> {
+    const url = this.publicUrl();
+    if (!url) return;
+    try {
+      await this.writeClipboard(url);
+      this.copied.set(true);
+    } catch {
+      this.notice.set('Could not copy the link. Select and copy it from the address bar.');
+    }
+  }
+
+  private async writeClipboard(value: string): Promise<void> {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+    const input = document.createElement('textarea');
+    input.value = value;
+    input.setAttribute('readonly', 'true');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand('copy');
+    input.remove();
+    if (!copied) throw new Error('Clipboard unavailable.');
+  }
+
   private async persist(publish: boolean): Promise<void> {
     const validation = validateFormSchema(this.schema());
     if (!validation.valid) {
@@ -416,6 +610,7 @@ export class FormEditorComponent {
       return;
     }
     this.loading.set(true);
+    this.savingAction.set(publish ? 'publishing' : 'saving');
     try {
       if (!this.formId) {
         const workspace = await this.data.workspaceForCurrentUser();
@@ -431,6 +626,7 @@ export class FormEditorComponent {
       }
       if (publish) await this.data.publishDraft(this.formId, this.schema());
       else await this.data.saveDraft(this.formId, this.schema());
+      this.published.set(publish);
       this.notice.set(publish ? 'Form published successfully.' : 'Draft saved successfully.');
       if (this.route.snapshot.paramMap.get('id') === 'new')
         await this.router.navigate(['/forms', this.formId]);
@@ -438,6 +634,7 @@ export class FormEditorComponent {
       this.notice.set(error instanceof Error ? error.message : 'Could not save the form.');
     } finally {
       this.loading.set(false);
+      this.savingAction.set(null);
     }
   }
 }

@@ -17,7 +17,7 @@ interface ReviewedResponse {
     <div class="container">
       <div class="page-header">
         <div>
-          <a routerLink="/" class="back-link">← Forms</a>
+           <a routerLink="/forms" class="back-link">← My forms</a>
           <h1>Responses</h1>
         </div>
         <button
@@ -94,11 +94,13 @@ interface ReviewedResponse {
       }
       .response-card {
         margin-bottom: var(--space-4);
+        overflow: hidden;
       }
       .response-card .card-header {
         display: flex;
         justify-content: space-between;
         gap: var(--space-3);
+        background: #f1f3ef;
       }
       .meta {
         color: var(--color-text-muted);
@@ -122,6 +124,7 @@ interface ReviewedResponse {
         margin: 0;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
+        color: var(--color-text);
       }
       .notice.error {
         color: var(--color-error);

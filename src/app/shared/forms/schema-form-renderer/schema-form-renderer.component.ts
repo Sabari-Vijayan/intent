@@ -8,13 +8,15 @@ import { Field, FormSchema } from '../../../types/schema';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <form (ngSubmit)="submit()" novalidate>
-      <div class="form-intro">
-        <h2>{{ schema.title }}</h2>
-        @if (schema.description) {
-          <p>{{ schema.description }}</p>
-        }
-      </div>
+    <div class="paper-form">
+      <div class="paper-form-mark" aria-hidden="true">intent · response sheet</div>
+      <form (ngSubmit)="submit()" novalidate>
+        <div class="form-intro">
+          <h2>{{ schema.title }}</h2>
+          @if (schema.description) {
+            <p>{{ schema.description }}</p>
+          }
+        </div>
 
       @for (section of schema.sections; track section.id) {
         <fieldset
@@ -28,7 +30,7 @@ import { Field, FormSchema } from '../../../types/schema';
 
           @for (field of section.fields; track field.id) {
             @if (isVisible(field)) {
-              <div class="form-group">
+              <div class="form-group question-field">
                 @if (
                   field.type !== 'consent' &&
                   field.type !== 'single_choice' &&
@@ -169,33 +171,67 @@ import { Field, FormSchema } from '../../../types/schema';
           }
         </fieldset>
       }
-      @if (showSubmit) {
-        <button class="btn btn-primary" type="submit" [disabled]="submitting">
-          Submit response
-        </button>
-        @if (submittedState && valid) {
-          <p class="success-text" role="status">Response is valid and ready to submit.</p>
+        @if (showSubmit) {
+          <div class="submit-row">
+            <span>Thank you for taking a moment.</span>
+            <button class="btn btn-primary" type="submit" [disabled]="submitting">
+              @if (submitting) { <span class="submit-spark" aria-hidden="true">✦</span> }
+              {{ submitting ? 'Sending gently…' : 'Submit response' }}
+            </button>
+          </div>
+          @if (submittedState && valid) {
+            <p class="success-text" role="status">Response is valid and ready to submit.</p>
+          }
         }
-      }
-    </form>
+      </form>
+    </div>
   `,
   styles: [
     `
-      .form-intro {
-        margin-bottom: var(--space-6);
+      .paper-form {
+        position: relative;
+        padding: 34px clamp(20px, 5vw, 58px) 42px;
+        background: #fffefa;
+        border: 1px solid #e7e6dc;
+        border-radius: 3px;
+        box-shadow: 0 18px 38px rgb(35 35 28 / 0.07);
       }
+      .paper-form::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: .35;
+        background: repeating-linear-gradient(0deg, transparent 0 31px, #eef0e9 32px);
+      }
+      .paper-form > * { position: relative; }
+      .paper-form-mark {
+        margin-bottom: 34px;
+        color: #9b9b91;
+        font: 600 .66rem/1 var(--font-sans);
+        letter-spacing: .08em;
+        text-transform: lowercase;
+      }
+      .form-intro {
+        margin-bottom: 38px;
+      }
+      .form-intro h2 { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 400; letter-spacing: -0.04em; }
       .form-intro p {
         color: var(--color-text-secondary);
+        max-width: 54ch;
+        margin-top: 10px;
       }
       .section {
         border: 0;
-        border-top: 1px solid var(--color-border);
-        padding: var(--space-6) 0 0;
-        margin: 0 0 var(--space-6);
+        border-top: 1px solid #dfe2d9;
+        padding: 30px 0 0;
+        margin: 0 0 34px;
       }
       legend {
-        font-size: var(--text-xl);
-        font-weight: var(--font-semibold);
+        font-family: var(--font-display);
+        font-size: 1.45rem;
+        font-weight: 400;
+        letter-spacing: -0.025em;
         padding: 0;
       }
       .choice-group {
@@ -207,8 +243,39 @@ import { Field, FormSchema } from '../../../types/schema';
         display: flex;
         align-items: center;
         gap: var(--space-2);
-        min-height: 32px;
+        min-height: 42px;
+        padding: 9px 12px;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        transition: background var(--transition-fast), border-color var(--transition-fast);
       }
+      .choice-label:hover {
+        background: #f3f5f0;
+        border-color: #e2e8df;
+      }
+      .question-field > .label { font-family: var(--font-display); font-size: 1.08rem; font-weight: 400; }
+      .question-field > .input {
+        border-color: transparent;
+        border-bottom: 1px solid #cfd4c9;
+        border-radius: 0;
+        padding-inline: 0;
+        background: transparent;
+      }
+      .question-field > .input:focus { border-bottom-color: var(--color-primary); box-shadow: none; }
+      .submit-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        margin-top: 40px;
+        padding-top: 22px;
+        border-top: 1px solid #dfe2d9;
+        color: var(--color-text-muted);
+        font-size: .76rem;
+      }
+      .submit-spark { display: inline-block; animation: submit-glow 1s ease-in-out infinite; }
+      @keyframes submit-glow { 0%, 100% { opacity: .55; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.1) rotate(8deg); } }
+      @media (prefers-reduced-motion: reduce) { .submit-spark { animation: none; } }
       .choice-label input {
         accent-color: var(--color-primary);
       }
@@ -217,6 +284,7 @@ import { Field, FormSchema } from '../../../types/schema';
         margin-top: var(--space-3);
       }
       @media (max-width: 640px) {
+        .paper-form { padding: 26px 17px 30px; }
         .form-intro h2 {
           font-size: 1.55rem;
         }
@@ -242,6 +310,8 @@ import { Field, FormSchema } from '../../../types/schema';
           flex: 0 0 auto;
           margin-top: 2px;
         }
+        .submit-row { align-items: stretch; flex-direction: column; gap: 14px; }
+        .submit-row .btn,
         form > .btn {
           width: 100%;
           min-height: 46px;
