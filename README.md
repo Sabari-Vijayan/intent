@@ -15,12 +15,20 @@ Respondents always receive a normal form — not a chatbot.
 - Public forms with locale selection and client-side validation.
 - Structured choice answers stored by stable option ID.
 - Creator response review with pagination and CSV export.
+- Response review dashboard with submission trends, language mix, question
+  insights, responsive answer cards, and saved translation controls.
 - Supabase Edge Functions for Sarvam-powered form generation, form editing,
   form translation, and requested free-text response translation.
+- Hardened AI form generation: validates proposals, handles provider response
+  shape variations, and supports larger drafts without persisting untrusted output.
 - Reviewable AI proposals: generated forms and edits require creator acceptance.
 
 The current implementation is a working prototype. See [checklist.md](checklist.md)
 for the milestone-by-milestone status and known gaps.
+
+## Demo
+
+[Watch the demo video](https://drive.google.com/drive/folders/17gWddGnAkxR2Q2ZIhcnUacA50gUkJR20?usp=drive_link)
 
 ## Stack
 
@@ -103,11 +111,11 @@ the frontend, commits, browser requests, or logs.
 Set the provider key as a Supabase secret and deploy the functions server-side:
 
 ```bash
-supabase secrets set SARVAM_API_KEY='<your Sarvam key>'
-supabase functions deploy generate-form
-supabase functions deploy propose-form-edit
-supabase functions deploy translate-form
-supabase functions deploy translate-response
+npx supabase secrets set SARVAM_API_KEY='<your Sarvam key>' --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy generate-form --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy propose-form-edit --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy translate-form --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy translate-response --project-ref YOUR_PROJECT_REF
 ```
 
 For local function development, keep the env file untracked:
@@ -128,6 +136,7 @@ npm run build                     # Production Angular build
 npm test                          # Karma test runner
 npm run lint                      # Currently blocked by the old TSLint builder
 npm run format:check              # Prettier check
+npx supabase db lint --linked     # Check the linked database schema
 ```
 
 For a non-interactive browser test run when Chrome/Brave is installed:
