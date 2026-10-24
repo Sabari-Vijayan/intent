@@ -124,6 +124,7 @@ export interface Response {
 }
 
 export interface ResponseAnswer {
+  id: string;
   response_id: string;
   field_id: string;
   value_json: unknown;
@@ -138,6 +139,12 @@ export interface AnswerTranslation {
   provider?: string;
   model?: string;
   status: 'complete' | 'failed' | 'pending';
+}
+
+export interface AITranslateResponseResult {
+  text: string;
+  provider?: string;
+  model?: string;
 }
 
 export interface AIJob {
@@ -183,6 +190,11 @@ export interface AIProposeEditResult {
   diff_summary: string;
 }
 
+export interface AppliedEditResult {
+  schema: FormSchema;
+  changes: string[];
+}
+
 export interface AIGenerateFormResult {
   schema: FormSchema;
   explanation: string;
@@ -194,4 +206,6 @@ export interface AITranslateFormResult {
   completeness: number;
   low_confidence_keys: string[];
   missing_keys: string[];
+  provider?: string;
+  model?: string;
 }

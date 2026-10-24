@@ -28,10 +28,8 @@ interface LocaleCopy {
             </div>
           }
         </div>
-
         <div class="hero-copy">
-          <div class="eyebrow"><span></span> A calmer way to collect insight</div>
-          <h1 id="hero-title">Make every question<br /><em>feel understood.</em></h1>
+           <h1 id="hero-title">Make every question<br /><em>feel understood.</em></h1>
           <p class="hero-lede">
             Describe what you need in plain language. Intent turns it into a thoughtful,
             multilingual form your audience can actually finish.
@@ -50,7 +48,16 @@ interface LocaleCopy {
           }
         </div>
 
-        <div class="hero-footnote"><span class="pulse"></span> Built for nuance, not just translation</div>
+      </section>
+
+      <section #reveal class="phone-section reveal" aria-labelledby="phone-title">
+        <div class="phone-stage" aria-hidden="true"><img src="assets/images/Floating_Minimalist_Form_Phone.png" alt="" /></div>
+        <div class="phone-copy">
+          <span class="section-kicker">Made for the moment</span>
+          <h2 id="phone-title">A better question fits in the hand.</h2>
+          <p>Clean, calm forms meet people wherever they are answering — without turning a thoughtful response into a chore.</p>
+          <a href="#studio" class="text-link">See the form in context <span>↓</span></a>
+        </div>
       </section>
 
       <section #reveal class="proof-strip reveal" aria-label="Intent benefits">
@@ -107,8 +114,10 @@ interface LocaleCopy {
         </div>
       </section>
 
-      <section #reveal class="closing-quote reveal"><div><span class="quote-mark">“</span><blockquote>We launched a 12-country study in an afternoon that used to take three weeks of translation back-and-forth.</blockquote><p><b>Elena Rostova</b> · Head of Global UX Research, CloudSync</p></div><div class="quote-result"><small>Study result</small><strong>88%</strong><span>faster kickoff to synthesis</span></div></section>
-      <section #reveal class="final-cta reveal"><span class="section-kicker">Ready when you are</span><h2>Give your next question<br /><em>a better chance.</em></h2><p>Start with a sentence. Leave with a form your audience will want to answer.</p><a routerLink="/forms/new" class="button button-light">Start building free <span>↗</span></a></section>
+       <section #reveal class="closing-cta reveal" aria-label="Proof and next step">
+         <div class="closing-quote"><div><span class="quote-mark">“</span><blockquote>We launched a 12-country study in an afternoon that used to take three weeks of translation back-and-forth.</blockquote><p><b>Elena Rostova</b> · Head of Global UX Research, CloudSync</p></div><div class="quote-result"><small>Study result</small><strong>88%</strong><span>faster kickoff to synthesis</span></div></div>
+         <div class="final-cta"><span class="section-kicker">Ready when you are</span><h2>Give your next question<br /><em>a better chance.</em></h2><p>Start with a sentence. Leave with a form your audience will want to answer.</p><a routerLink="/forms/new" class="button button-light">Start building free <span>↗</span></a></div>
+       </section>
       <footer #reveal class="site-footer reveal" id="footer">
         <div class="footer-main">
           <div class="footer-brand"><a routerLink="/" class="footer-logo">intent<i></i></a><p>The thoughtful way to turn raw intent into forms people want to answer — in every language.</p><form (submit)="$event.preventDefault()"><label for="footer-email">A note when we launch</label><div class="footer-signup"><input id="footer-email" type="email" placeholder="you@company.com" /><button type="submit">Subscribe <span>↗</span></button></div></form></div>
@@ -130,10 +139,9 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
   readonly cards = [
     { image: 'assets/images/sunset_curve.jpg', label: 'EN · Direct' },
     { image: 'assets/images/dragon_tree_curve.jpg', label: 'JA · 敬語' },
-    { image: 'assets/images/kazhksthan_curve.png', label: '' },
-    { image: 'assets/images/mountains_curve.jpg', label: 'DE · Formal' },
+     { image: 'assets/images/mountains_curve.jpg', label: 'DE · Formal' },
     { image: 'assets/images/boaboa_tree_curve.jpg', label: 'ES · Claro' },
-    { image: 'assets/images/machu-pichu_curve.jpg', label: '' },
+     { image: 'assets/images/machu-pichu_curve.jpg', label: 'ES · Claro' },
   ];
   readonly locales = [
     { key: 'en' as Locale, label: 'English (US)' },

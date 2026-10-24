@@ -116,6 +116,9 @@ export function validateFormSchema(input: unknown): SchemaValidationResult {
   if (!Array.isArray(sections)) {
     errors.push({ path: 'sections', message: 'Sections must be an array.' });
   } else {
+    if (sections.length === 0) {
+      errors.push({ path: 'sections', message: 'At least one section is required.' });
+    }
     if (sections.length > SCHEMA_LIMITS.maxSections) {
       errors.push({
         path: 'sections',

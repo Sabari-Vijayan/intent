@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, inject, OnDestroy, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { SupabaseDataService } from '../../../core/supabase/supabase-data.service';
 
@@ -7,9 +7,9 @@ import { SupabaseDataService } from '../../../core/supabase/supabase-data.servic
   standalone: true,
   imports: [RouterLink],
   template: `
-    <header class="app-header" role="banner">
+    <header class="app-header" [class.nav-hidden]="navHidden()" role="banner">
       <div class="header-content">
-         <a [routerLink]="data.user() ? '/forms' : '/'" class="logo" aria-label="Intent home">
+          <a routerLink="/home" class="logo" aria-label="Intent home">
           <span>intent</span><i aria-hidden="true"></i>
         </a>
         <nav
@@ -66,6 +66,12 @@ import { SupabaseDataService } from '../../../core/supabase/supabase-data.servic
         background: rgb(248 248 245 / 82%);
         backdrop-filter: blur(18px);
         border-bottom: 1px solid rgb(20 20 20 / 0.06);
+        transition: transform 220ms ease, opacity 220ms ease;
+      }
+      .app-header.nav-hidden {
+        transform: translateY(-100%);
+        opacity: 0;
+        pointer-events: none;
       }
       .header-content {
         max-width: 1280px;
@@ -101,7 +107,7 @@ import { SupabaseDataService } from '../../../core/supabase/supabase-data.servic
         gap: 28px;
       }
       .nav-link {
-        color: #747470;
+         color: #4f514c;
         text-decoration: none;
         font:
           500 12px 'DM Sans',
@@ -120,7 +126,7 @@ import { SupabaseDataService } from '../../../core/supabase/supabase-data.servic
         gap: 22px;
       }
       .sign-in {
-        color: #747470;
+         color: #4f514c;
         font:
           500 12px 'DM Sans',
           'Segoe UI',
@@ -230,10 +236,11 @@ import { SupabaseDataService } from '../../../core/supabase/supabase-data.servic
         .header-content {
           min-height: 68px;
           padding: 0 16px;
-          gap: 10px;
+          gap: 8px;
         }
         .logo {
           font-size: 23px;
+          flex: 0 0 auto;
         }
         .sign-in,
         .avatar {
@@ -241,10 +248,12 @@ import { SupabaseDataService } from '../../../core/supabase/supabase-data.servic
         }
         .header-actions {
           gap: 0;
+          min-width: 0;
         }
         .header-cta {
           padding: 10px 12px;
           font-size: 11px;
+          white-space: nowrap;
         }
         .desktop-cta-label {
           display: none;
@@ -253,6 +262,11 @@ import { SupabaseDataService } from '../../../core/supabase/supabase-data.servic
           display: inline;
         }
       }
+      @media (max-width: 380px) {
+        .header-content { padding-inline: 12px; }
+        .header-cta { display: none; }
+        .header-actions { margin-left: auto; }
+      }
       .nav-link.active {
         color: var(--color-primary);
         background: var(--color-primary-subtle);
@@ -260,10 +274,31 @@ import { SupabaseDataService } from '../../../core/supabase/supabase-data.servic
     `,
   ],
 })
-export class HeaderComponent {
+export class HeaderComponent implements AfterViewInit, OnDestroy {
   readonly data = inject(SupabaseDataService);
   private readonly router = inject(Router);
   menuOpen = signal(false);
+  navHidden = signal(false);
+  private scrollTarget?: HTMLElement;
+  private lastScrollTop = 0;
+  private readonly handleScroll = (): void => {
+    const current = this.scrollTarget?.scrollTop ?? window.scrollY;
+    if (current < 24) this.navHidden.set(false);
+    else if (current > this.lastScrollTop + 4) this.navHidden.set(true);
+    else if (current < this.lastScrollTop - 4) this.navHidden.set(false);
+    this.lastScrollTop = current;
+  };
+
+  ngAfterViewInit(): void {
+    this.scrollTarget = document.querySelector<HTMLElement>('.home-shell') ?? undefined;
+    const target: HTMLElement | Window = this.scrollTarget ?? window;
+    target.addEventListener('scroll', this.handleScroll, { passive: true });
+  }
+
+  ngOnDestroy(): void {
+    const target: HTMLElement | Window = this.scrollTarget ?? window;
+    target.removeEventListener('scroll', this.handleScroll);
+  }
 
   async signOut(): Promise<void> {
     await this.data.signOut();

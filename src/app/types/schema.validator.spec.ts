@@ -1,5 +1,7 @@
 import { validFormSchema } from './schema.fixtures';
 import { isFormSchema, validateFormSchema } from './schema.validator';
+import { applyFormEditOperations } from './schema.edits';
+import { localizedSchema, sourceStrings, validateTranslationStrings } from './schema.translation';
 
 describe('schema validator', () => {
   it('accepts a valid schema fixture', () => {
@@ -61,5 +63,45 @@ describe('schema validator', () => {
   it('rejects malformed top-level values', () => {
     expect(validateFormSchema(null).valid).toBeFalse();
     expect(validateFormSchema({}).valid).toBeFalse();
+  });
+
+  it('applies typed edits while preserving stable IDs', () => {
+    const schema = applyFormEditOperations(validFormSchema, [
+      { op: 'update_field', field_id: 'fld_rating', changes: { label: 'Updated question' } },
+      { op: 'reorder_fields', section_id: 'sec_main', field_ids: ['fld_details', 'fld_rating', 'fld_topic', 'fld_name'] },
+    ]);
+
+    expect(schema.sections[0].fields[0].id).toBe('fld_details');
+    expect(schema.sections[0].fields[1].label).toBe('Updated question');
+  });
+
+  it('rejects edits that change IDs or produce an invalid schema', () => {
+    expect(() =>
+      applyFormEditOperations(validFormSchema, [
+        { op: 'update_field', field_id: 'fld_rating', changes: { id: 'new_id' } },
+      ])
+    ).toThrowError();
+    expect(() =>
+      applyFormEditOperations(validFormSchema, [
+        { op: 'remove_section', section_id: 'sec_main' },
+      ])
+    ).toThrowError();
+  });
+
+  it('validates and applies translations without changing schema IDs or semantics', () => {
+    const strings = sourceStrings(validFormSchema);
+    strings['form.title'] = 'Translated title';
+    expect(validateTranslationStrings(validFormSchema, strings).valid).toBeTrue();
+    const translated = localizedSchema(validFormSchema, strings);
+    expect(translated.title).toBe('Translated title');
+    expect(translated.sections[0].fields[0].id).toBe(validFormSchema.sections[0].fields[0].id);
+    expect(translated.sections[0].fields[0].type).toBe(validFormSchema.sections[0].fields[0].type);
+  });
+
+  it('rejects incomplete or unknown translation keys', () => {
+    const strings = sourceStrings(validFormSchema);
+    delete strings['form.title'];
+    expect(validateTranslationStrings(validFormSchema, strings).valid).toBeFalse();
+    expect(validateTranslationStrings(validFormSchema, { ...sourceStrings(validFormSchema), extra: 'x' }).valid).toBeFalse();
   });
 });

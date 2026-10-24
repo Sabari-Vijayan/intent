@@ -176,7 +176,7 @@ interface FormItem {
         gap: 12px;
       }
       .sheet-topline {
-        color: #98988f;
+         color: #62645e;
         font-size: .65rem;
         letter-spacing: .08em;
         text-transform: lowercase;

@@ -243,6 +243,10 @@ create policy answer_member_read on public.response_answers for select to authen
 drop policy if exists answer_translation_member_read on public.answer_translations;
 create policy answer_translation_member_read on public.answer_translations for select to authenticated
   using (exists (select 1 from public.response_answers a join public.responses r on r.id = a.response_id join public.forms f on f.id = r.form_id where a.id = answer_id and public.is_workspace_member(f.workspace_id)));
+drop policy if exists answer_translation_member_write on public.answer_translations;
+create policy answer_translation_member_write on public.answer_translations for all to authenticated
+  using (exists (select 1 from public.response_answers a join public.responses r on r.id = a.response_id join public.forms f on f.id = r.form_id where a.id = answer_id and public.is_workspace_member(f.workspace_id)))
+  with check (exists (select 1 from public.response_answers a join public.responses r on r.id = a.response_id join public.forms f on f.id = r.form_id where a.id = answer_id and public.is_workspace_member(f.workspace_id)));
 
 drop policy if exists audit_member_read on public.audit_events;
 create policy audit_member_read on public.audit_events for select to authenticated

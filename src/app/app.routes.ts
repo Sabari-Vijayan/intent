@@ -14,6 +14,11 @@ export const routes: Routes = [
       import('./features/home/home.component').then((m) => m.HomeComponent),
   },
   {
+    path: 'home',
+    loadComponent: () =>
+      import('./features/home/home.component').then((m) => m.HomeComponent),
+  },
+  {
     path: 'forms',
     canActivate: [creatorGuard],
     loadComponent: () =>

@@ -11,8 +11,8 @@ Last updated: 2026-10-23
 - [x] Form publishing works after applying the version-update RLS policy.
 - [x] Public published-form submission works.
 - [x] Creator response review and CSV export work.
-- [ ] AI editing is not implemented.
-- [ ] Sarvam translation integration is not implemented.
+- [ ] AI editing is partially implemented: typed proposals, review, apply, and session undo are available; persistent revision history and production deployment remain.
+- [ ] Sarvam translation integration is partially implemented: form translation is wired; response translation and reviewed translation editing remain.
 - [ ] Final UI polish and complete accessibility pass remain.
 
 ## Milestone status
@@ -129,17 +129,17 @@ Files:
 
 ### Milestone 6 — AI edits and translations
 
-- [ ] Implement typed `propose_form_edit` operations.
-- [ ] Implement diff review and acceptance.
-- [ ] Implement undo/revision history.
-- [ ] Implement `translate_form`.
-- [ ] Preserve IDs, types, required flags, validation, options, and conditions.
-- [ ] Add translation completeness/status UI.
+- [x] Implement typed `propose_form_edit` operations.
+- [x] Implement diff review and acceptance.
+- [x] Implement session undo; persistent revision history remains.
+- [x] Implement `translate_form`.
+- [x] Preserve IDs, types, required flags, validation, options, and conditions.
+- [x] Add translation completeness/status UI.
 - [ ] Mark translations stale after source edits.
-- [ ] Implement `translate_response`.
-- [ ] Preserve immutable original response text.
-- [ ] Add original/translated response toggle.
-- [ ] Ensure translation failure never blocks submission.
+- [x] Implement `translate_response` for creator-requested free-text translation.
+- [x] Preserve immutable original response value; translations are stored separately.
+- [x] Add original/translated response toggle and translated CSV column.
+- [x] Ensure missing form translation never blocks submission; respondent falls back to source text.
 
 ### Milestone 7 — Hardening
 
@@ -183,9 +183,9 @@ Current result:
 
 - [x] Improve creator navigation and authenticated header state.
 - [x] Add sign-out control.
-- [ ] Add clearer draft/published status and version information.
+- [x] Add clearer draft/published status and version information.
 - [ ] Improve form editor layout and empty states.
-- [ ] Add field option editing for choice fields.
+- [x] Add field option editing for choice fields.
 - [ ] Improve response review layout and filters.
 - [ ] Add mobile and keyboard-accessibility polish.
 - [ ] Add visible UI states for loading, errors, save success, and publish confirmation.

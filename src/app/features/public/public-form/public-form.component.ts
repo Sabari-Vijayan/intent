@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { SupabaseDataService } from '../../../core/supabase/supabase-data.service';
 import { SchemaFormRendererComponent } from '../../../shared/forms/schema-form-renderer/schema-form-renderer.component';
 import { FormSchema } from '../../../types/schema';
+import { localizedSchema, validateTranslationStrings } from '../../../types/schema.translation';
 
 @Component({
   selector: 'app-public-form',
@@ -12,9 +13,6 @@ import { FormSchema } from '../../../types/schema';
   imports: [CommonModule, FormsModule, SchemaFormRendererComponent],
   template: `
     <div class="container public-form-shell">
-      <div class="public-brand" aria-label="Intent form">
-        <span>intent</span><i aria-hidden="true"></i><small>a thoughtful question</small>
-      </div>
       @if (loading()) {
         <div class="public-loading" role="status">
           <span class="public-loading-mark" aria-hidden="true">✦</span>
@@ -35,11 +33,13 @@ import { FormSchema } from '../../../types/schema';
           <div class="card-body">
             <div class="locale-row">
               <label class="label" for="locale">Language</label
-              ><select class="input" id="locale" [(ngModel)]="locale">
+              ><select class="input" id="locale" [(ngModel)]="locale" (ngModelChange)="changeLocale($event)" [disabled]="translationLoading()">
                 <option *ngFor="let supported of schema()!.enabled_locales" [value]="supported">
                   {{ supported }}
                 </option>
               </select>
+              @if (translationLoading()) { <span class="help-text" role="status">Loading translation…</span> }
+              @if (translationNotice()) { <span class="help-text" role="status">{{ translationNotice() }}</span> }
             </div>
             <app-schema-form-renderer
               [schema]="schema()!"
@@ -95,28 +95,6 @@ import { FormSchema } from '../../../types/schema';
       }
       .locale-row .label { margin: 0; color: var(--color-text-muted); font-size: .72rem; font-weight: 500; }
       .locale-row .input { width: auto; min-width: 150px; padding-block: 7px; border-radius: 999px; background: #fffefa; }
-      .public-brand {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        margin: 0 0 28px 2px;
-        color: #242424;
-        font: 500 1.35rem/1 var(--font-display);
-        letter-spacing: -0.06em;
-      }
-      .public-brand i {
-        width: 4px;
-        height: 4px;
-        margin-top: 9px;
-        border-radius: 50%;
-        background: currentColor;
-      }
-      .public-brand small {
-        margin-left: 8px;
-        color: var(--color-text-muted);
-        font: 0.68rem var(--font-sans);
-        letter-spacing: 0;
-      }
       .success {
         text-align: center;
         padding: var(--space-10);
@@ -158,6 +136,7 @@ export class PublicFormComponent {
   private readonly data = inject(SupabaseDataService);
   private readonly route = inject(ActivatedRoute);
   schema = signal<FormSchema | null>(null);
+  private sourceSchema = signal<FormSchema | null>(null);
   private formId = '';
   private versionId = '';
   locale = 'en';
@@ -165,6 +144,8 @@ export class PublicFormComponent {
   submitting = signal(false);
   success = signal(false);
   error = signal('');
+  translationLoading = signal(false);
+  translationNotice = signal('');
 
   constructor() {
     void this.load();
@@ -177,12 +158,42 @@ export class PublicFormComponent {
       const result = await this.data.publishedFormById(formId);
       this.formId = result.form.id;
       this.versionId = result.version.id;
-      this.schema.set(result.version.schema_json);
-      this.locale = result.version.schema_json.default_locale;
+       this.sourceSchema.set(result.version.schema_json);
+       this.schema.set(result.version.schema_json);
+       const requestedLocale = this.route.snapshot.queryParamMap.get('locale');
+       this.locale = requestedLocale && result.version.schema_json.enabled_locales.includes(requestedLocale)
+         ? requestedLocale
+         : result.version.schema_json.default_locale;
+       if (this.locale !== result.version.schema_json.default_locale) await this.changeLocale(this.locale);
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : 'Could not load this form.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async changeLocale(locale: string): Promise<void> {
+    const source = this.sourceSchema();
+    if (!source) return;
+    this.locale = locale;
+    if (locale === source.default_locale) {
+      this.schema.set(source);
+      this.translationNotice.set('');
+      return;
+    }
+    this.translationLoading.set(true);
+    try {
+      const translation = await this.data.formTranslation(this.versionId, locale);
+      if (!translation) throw new Error('This language is not available yet. Showing the source language.');
+      const validation = validateTranslationStrings(source, translation.strings);
+      if (!validation.valid && !validation.error.startsWith('Missing translation key:')) throw new Error('This translation is invalid. Showing the source language.');
+      this.schema.set(localizedSchema(source, translation.strings));
+      this.translationNotice.set('');
+    } catch (error) {
+      this.schema.set(source);
+      this.translationNotice.set(error instanceof Error ? error.message : 'Could not load this translation.');
+    } finally {
+      this.translationLoading.set(false);
     }
   }
 

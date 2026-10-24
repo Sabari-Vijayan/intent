@@ -9,6 +9,11 @@ import {
   ResponseAnswer,
   Workspace,
   AIGenerateFormResult,
+  AIProposeEditResult,
+  AITranslateFormResult,
+  FormTranslation,
+  AnswerTranslation,
+  AITranslateResponseResult,
 } from '../../types/schema';
 
 interface CacheEntry<T> {
@@ -97,6 +102,83 @@ export class SupabaseDataService {
     return data as AIGenerateFormResult;
   }
 
+  async proposeFormEdit(schema: FormSchema, instruction: string): Promise<AIProposeEditResult> {
+    const { data, error } = await this.client.functions.invoke('propose-form-edit', {
+      body: { schema, instruction },
+    });
+    if (error) throw error;
+    if (!data?.ops || !Array.isArray(data.ops)) throw new Error(data?.error ?? 'The AI returned no edit proposal.');
+    return data as AIProposeEditResult;
+  }
+
+  async translateForm(schema: FormSchema, sourceLocale: string, targetLocale: string): Promise<AITranslateFormResult> {
+    const { data, error } = await this.client.functions.invoke('translate-form', {
+      body: { schema, source_locale: sourceLocale, target_locale: targetLocale },
+    });
+    if (error) {
+      const response = (error as { context?: { json: () => Promise<unknown>; status?: number } }).context;
+      if (response) {
+        try {
+          const details = (await response.json()) as Record<string, unknown>;
+          if (typeof details['error'] === 'string') throw new Error(details['error']);
+          if (Array.isArray(details['missing_keys'])) throw new Error(`Translation is incomplete (${details['missing_keys'].length} missing keys).`);
+        } catch (responseError) {
+          if (responseError instanceof Error && responseError.message !== error.message) throw responseError;
+        }
+      }
+      throw error;
+    }
+    if (!data?.strings || typeof data.strings !== 'object') throw new Error(data?.error ?? 'The translation provider returned no strings.');
+    return data as AITranslateFormResult;
+  }
+
+  async saveFormTranslation(versionId: string, locale: string, strings: Record<string, string>, status: 'complete' | 'partial' = 'complete', provider = 'sarvam', model = 'sarvam-105b'): Promise<FormTranslation> {
+    const { data, error } = await this.client.from('form_translations').upsert({
+      form_version_id: versionId,
+      locale,
+      strings,
+      status,
+      provider,
+      model,
+      updated_at: new Date().toISOString(),
+    }).select().single();
+    if (error) throw error;
+    return data as FormTranslation;
+  }
+
+  async formTranslation(versionId: string, locale: string): Promise<FormTranslation | null> {
+    const { data, error } = await this.client.from('form_translations')
+      .select('*').eq('form_version_id', versionId).eq('locale', locale).maybeSingle();
+    if (error) throw error;
+    return data as FormTranslation | null;
+  }
+
+  async formTranslations(versionId: string): Promise<FormTranslation[]> {
+    const { data, error } = await this.client.from('form_translations').select('*').eq('form_version_id', versionId);
+    if (error) throw error;
+    return (data ?? []) as FormTranslation[];
+  }
+
+  async translateResponse(text: string, sourceLocale: string, targetLocale: string): Promise<AITranslateResponseResult> {
+    const { data, error } = await this.client.functions.invoke('translate-response', { body: { text, source_locale: sourceLocale, target_locale: targetLocale } });
+    if (error) throw error;
+    if (!data?.text) throw new Error(data?.error ?? 'The translation provider returned no text.');
+    return data as AITranslateResponseResult;
+  }
+
+  async saveAnswerTranslation(answerId: string, targetLocale: string, text: string, provider = 'sarvam', model = 'sarvam-105b'): Promise<AnswerTranslation> {
+    const { data, error } = await this.client.from('answer_translations').upsert({ answer_id: answerId, target_locale: targetLocale, text, provider, model, status: 'complete' }).select().single();
+    if (error) throw error;
+    return data as AnswerTranslation;
+  }
+
+  async answerTranslations(answerIds: string[], targetLocale: string): Promise<AnswerTranslation[]> {
+    if (!answerIds.length) return [];
+    const { data, error } = await this.client.from('answer_translations').select('*').in('answer_id', answerIds).eq('target_locale', targetLocale);
+    if (error) throw error;
+    return (data ?? []) as AnswerTranslation[];
+  }
+
   async workspaceForCurrentUser(): Promise<Workspace | null> {
     const user = await this.currentUser();
     if (!user) return null;
@@ -178,12 +260,15 @@ export class SupabaseDataService {
     const user = await this.requireUser();
     const { data: latest, error: latestError } = await this.client
       .from('form_versions')
-      .select('version_number')
+      .select('id, version_number, schema_json, published_at')
       .eq('form_id', formId)
       .order('version_number', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (latestError) throw latestError;
+    if (latest && !latest.published_at && JSON.stringify(latest.schema_json) === JSON.stringify(schema)) {
+      return latest as FormVersion;
+    }
     const { data: version, error: versionError } = await this.client
       .from('form_versions')
       .insert({

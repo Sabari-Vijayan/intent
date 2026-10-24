@@ -8,6 +8,9 @@ source control, browser requests, or logs.
 ```bash
 supabase secrets set SARVAM_API_KEY='<your Sarvam key>'
 supabase functions deploy generate-form
+supabase functions deploy propose-form-edit
+supabase functions deploy translate-form
+supabase functions deploy translate-response
 ```
 
 The function expects the caller's Supabase access token and calls Sarvam server-side using

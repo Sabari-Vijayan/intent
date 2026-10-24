@@ -207,7 +207,7 @@ import { Field, FormSchema } from '../../../types/schema';
       .paper-form > * { position: relative; }
       .paper-form-mark {
         margin-bottom: 34px;
-        color: #9b9b91;
+         color: var(--color-text-secondary);
         font: 600 .66rem/1 var(--font-sans);
         letter-spacing: .08em;
         text-transform: lowercase;
