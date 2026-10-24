@@ -152,6 +152,13 @@ function validateSchema(value: unknown): string[] {
 }
 
 function extractJson(content: unknown): unknown {
+  if (Array.isArray(content)) {
+    const text = content
+      .map((part) => (isRecord(part) && typeof part['text'] === 'string' ? part['text'] : ''))
+      .join('')
+      .trim();
+    return text ? extractJson(text) : content;
+  }
   if (typeof content !== 'string') return content;
   const trimmed = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   try {
@@ -190,6 +197,70 @@ function extractJson(content: unknown): unknown {
   }
 }
 
+function isFormSchema(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && value['schema_version'] === 1 && Array.isArray(value['sections']);
+}
+
+function normalizeSchema(value: Record<string, unknown>): Record<string, unknown> {
+  const schema = { ...value };
+  if (Array.isArray(schema['sections'])) {
+    schema['sections'] = schema['sections'].map((section) => {
+      if (!isRecord(section)) return section;
+      const nextSection = { ...section };
+      for (const key of ['description', 'condition']) {
+        if (nextSection[key] === null) delete nextSection[key];
+      }
+      if (Array.isArray(nextSection['fields'])) {
+        nextSection['fields'] = nextSection['fields'].map((field) => {
+          if (!isRecord(field)) return field;
+          const nextField = { ...field };
+          for (const key of ['help_text', 'validation', 'condition', 'options']) {
+            if (nextField[key] === null) delete nextField[key];
+          }
+          return nextField;
+        });
+      }
+      return nextSection;
+    });
+  }
+  return schema;
+}
+
+function normalizeProposal(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+
+  const envelope = (schema: Record<string, unknown>, source?: Record<string, unknown>) => ({
+    schema: normalizeSchema(schema),
+    explanation: typeof source?.['explanation'] === 'string' ? source['explanation'] : '',
+    validation_findings: Array.isArray(source?.['validation_findings'])
+      ? source['validation_findings'].filter((finding): finding is string => typeof finding === 'string')
+      : [],
+  });
+
+  if (isFormSchema(value)) {
+    return envelope(value);
+  }
+
+  const schemaValue = value['schema'];
+  if (isFormSchema(schemaValue)) {
+    return envelope(schemaValue, value);
+  }
+  if (typeof schemaValue === 'string') {
+    try {
+      const parsedSchema = extractJson(schemaValue);
+      if (isFormSchema(parsedSchema)) return envelope(parsedSchema, value);
+    } catch {
+      // The regular validation path below returns a safe error for this shape.
+    }
+  }
+
+  for (const key of ['form', 'form_schema', 'proposal']) {
+    const candidate = value[key];
+    if (isFormSchema(candidate)) return envelope(candidate, value);
+  }
+  return null;
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed.' }, 405);
@@ -225,12 +296,12 @@ Deno.serve(async (request) => {
       body: JSON.stringify({
         model: 'sarvam-105b',
         temperature: 0.2,
-        max_tokens: 3000,
+        max_tokens: 5000,
         messages: [
-          { role: 'system', content: `You create concise, accessible forms. Return only JSON matching the supplied schema. Use locale ${locale}. IDs must be stable snake_case identifiers. Never invent answers or include HTML, JavaScript, SQL, or expressions. Choice fields need stable option IDs.` },
+          { role: 'system', content: `You create concise, accessible forms. Return exactly one JSON object with the keys schema, explanation, and validation_findings. The schema must be inside the schema key, never return a bare schema. Use locale ${locale}. IDs must be stable snake_case identifiers. Never invent answers or include HTML, JavaScript, SQL, or expressions. Choice fields need stable option IDs.` },
           { role: 'user', content: input['prompt'] },
         ],
-        response_format: { type: 'json_schema', json_schema: { name: 'generated_form', strict: true, schema: responseJsonSchema } },
+        response_format: { type: 'json_schema', json_schema: { name: 'generated_form', description: 'A reviewable form schema proposal with an explanation and validation findings.', strict: false, schema: responseJsonSchema } },
       }),
     });
     if (!sarvamResponse.ok) {
@@ -247,25 +318,23 @@ Deno.serve(async (request) => {
       return jsonResponse({ error: 'The generation provider returned an error.', provider_status: sarvamResponse.status, provider_code: providerCode, provider_request_id: providerRequestId }, sarvamResponse.status === 429 ? 429 : 502);
     }
     const payload = await sarvamResponse.json();
-    const content = payload?.choices?.[0]?.message?.content;
+    const message = payload?.choices?.[0]?.message;
+    const content = message?.content;
+    const finishReason = payload?.choices?.[0]?.finish_reason;
+    console.log(JSON.stringify({ event: 'provider_response', content_type: typeof content, finish_reason: finishReason }));
     let result: unknown;
     try { result = extractJson(content); } catch { return jsonResponse({ error: 'Provider returned malformed JSON.' }, 502); }
-    // Some structured-output responses return the requested form schema
-    // directly instead of preserving the proposal envelope. Normalize that
-    // shape without relaxing validation or accepting arbitrary output.
-    if (isRecord(result) && result['schema_version'] === 1 && Array.isArray(result['sections'])) {
-      result = { schema: result, explanation: '', validation_findings: [] };
-    }
-    if (!isRecord(result) || !isRecord(result['schema'])) {
+    const proposal = normalizeProposal(result);
+    if (!proposal || !isRecord(proposal['schema'])) {
       console.error(JSON.stringify({ event: 'invalid_proposal_shape', result_type: typeof result, keys: isRecord(result) ? Object.keys(result).slice(0, 20) : [] }));
       return jsonResponse({ error: 'Provider returned an invalid proposal.' }, 502);
     }
-    const validationErrors = validateSchema(result['schema']);
+    const validationErrors = validateSchema(proposal['schema']);
     if (validationErrors.length) {
       console.error(JSON.stringify({ event: 'schema_validation_error', count: validationErrors.length, errors: validationErrors.slice(0, 5) }));
       return jsonResponse({ error: 'Provider returned an invalid form schema.', validation_errors: validationErrors }, 502);
     }
-    return jsonResponse({ schema: result['schema'], explanation: result['explanation'] ?? '', validation_findings: result['validation_findings'] ?? [], provider: 'sarvam', model: 'sarvam-105b' });
+    return jsonResponse({ schema: proposal['schema'], explanation: proposal['explanation'] ?? '', validation_findings: proposal['validation_findings'] ?? [], provider: 'sarvam', model: 'sarvam-105b' });
   } catch (error) {
     const message = error instanceof DOMException && error.name === 'AbortError' ? 'Generation timed out.' : 'Generation failed.';
     return jsonResponse({ error: message }, 504);
