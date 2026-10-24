@@ -28,6 +28,8 @@ for the milestone-by-milestone status and known gaps.
 
 ## Demo
 
+[Open the hosted app](https://intent-aoy.pages.dev/)
+
 [Watch the demo video](https://drive.google.com/drive/folders/17gWddGnAkxR2Q2ZIhcnUacA50gUkJR20?usp=drive_link)
 
 ## Stack
